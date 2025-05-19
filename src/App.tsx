@@ -1,8 +1,18 @@
+import Chat from "./components/Chat"
+import Login from "./components/login"
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
 function App() {
 
   return (
     <>
-    <div className="h-screen w-full bg-zinc-950  text-white">hello</div>
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/chat" element={<Chat />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </Router>
     </>
   )
 }
