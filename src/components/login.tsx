@@ -11,7 +11,7 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log(import.meta.env.VITE_BACKEND_URL)
-    const res = await fetch(`http://localhost:3000/api/auth/loginCustomer`, {
+    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/loginCustomer`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

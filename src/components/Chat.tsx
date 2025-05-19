@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Plus, MessageSquare, Shield, Ship, HelpCircle, Users, Settings, LogOut, Image, Menu, X } from 'lucide-react';
+import { Send, Plus, MessageSquare, Shield, Ship, HelpCircle, Users, Settings, LogOut, Image, Menu, X, IdCard, Loader, CheckCheck } from 'lucide-react';
 
 
 //interface for chat
@@ -17,7 +17,9 @@ const Chat: React.FC = () => {
   //currnet ongoing chat
   const [currentChat, setCurrentChat] = useState<ChatMessage[]>([]);
   const [currentChatToGpt, setcurrentChatToGpt] = useState<ChatMessage[]>([]);
-
+  const [allClaims, setallClaims] = useState<string[]>(['0333962c-d639-4f10-8e78-79d793296c59', '3c33616a-13d0-4125-b1fb-a3f09e95e20e', '3d9d7f4c-a8bb-4fe0-8a0c-cee726649aeb', 'af23b083-e55a-44d1-8aca-b0c051a31314'])
+  const [ChatLoading, setChatLoading] = useState<boolean>(false)
+  const [showSubmitClaim, setshowSubmitClaim] = useState<boolean>(false)
 
   //sidebar 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -35,11 +37,11 @@ const Chat: React.FC = () => {
   useEffect(() => {
 
     //it fethces on every refresh from localstorage 
-    const chat = JSON.parse(localStorage.getItem('chatWith_ai') ||
+    const chat = JSON.parse(localStorage.getItem(claimId1) ||
       JSON.stringify([{ role: "assistant", content: [{ type: "text", text: "hey how can i help you today" }] }])
     );
 
-    const GptChat = JSON.parse(localStorage.getItem('currentChatToGpt') ||
+    const GptChat = JSON.parse(localStorage.getItem(claimId1 + "GPT") ||
       JSON.stringify([{ role: "assistant", content: [{ type: "text", text: "hey how can i help you today" }] }])
     );
 
@@ -50,6 +52,28 @@ const Chat: React.FC = () => {
   }, []);
 
 
+  useEffect(() => {
+    if (currentChat.length > 2) {
+      setshowSubmitClaim(true)
+    } else {
+      setshowSubmitClaim(false)
+    }
+  }, [currentChat])
+
+
+  useEffect(() => {
+    const chat = JSON.parse(localStorage.getItem(claimId1) ||
+      JSON.stringify([{ role: "assistant", content: [{ type: "text", text: "hey how can i help you today" }] }])
+    );
+
+    const GptChat = JSON.parse(localStorage.getItem(claimId1 + "GPT") ||
+      JSON.stringify([{ role: "assistant", content: [{ type: "text", text: "hey how can i help you today" }] }])
+    );
+
+    //and set it to currnet ongoing chat
+    setCurrentChat(chat)
+    setcurrentChatToGpt(GptChat)
+  }, [claimId1])
 
 
   useEffect(() => {
@@ -61,8 +85,8 @@ const Chat: React.FC = () => {
       return; //  Skip first render
     }
 
-    localStorage.setItem("chatWith_ai", JSON.stringify(currentChat));
-    localStorage.setItem("Gpt_chat", JSON.stringify(currentChat));
+    localStorage.setItem(claimId1, JSON.stringify(currentChat));
+    localStorage.setItem(claimId1 + "GPT", JSON.stringify(currentChat));
   }, [currentChat]);
 
   // Auto scroll to bottom whenever messages change
@@ -72,9 +96,12 @@ const Chat: React.FC = () => {
 
 
 
+
+
   //handling the sendmessage functions 
   //
   const handleSendMessage = async (e: React.FormEvent) => {
+    setChatLoading(true)
     //preventing the default behaviour
     e.preventDefault();
     if (message.trim()) {
@@ -118,27 +145,30 @@ const Chat: React.FC = () => {
           setCurrentChat(cChat);
           setcurrentChatToGpt(aiRespondedChat)
         }
+        setChatLoading(false)
       } catch (error) {
         //handling the error
         console.log(error)
+        setChatLoading(false)
       }
 
     }
-    setTimeout(() => {
-      console.log("gptchat", currentChatToGpt);
-      console.log("current caht", currentChat)
-    }, 100);
+    setChatLoading(false)
   };
 
 
   //handiing the image
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setChatLoading(true)
     //finding the file
     const files = e.target.files;
     const claimId = claimId1; // Replace this with actual ID (from props, state, etc.)
 
     //if no file return early
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0) {
+      setChatLoading(false)
+      return
+    };
 
     //debugging
     //console.log("Image(s) selected:", [...files].map(f => f.name)); // debug log
@@ -195,34 +225,41 @@ const Chat: React.FC = () => {
       } else {
         console.error("❌ Upload failed:", data);
       }
-
+      setChatLoading(false)
 
     } catch (err) {
+      setChatLoading(false)
       console.error("⚠️ Upload error:", err);
     }
+    setChatLoading(false)
     e.target.files = null
   };
 
 
 
   const handleSubmitClaim = async () => {
-    console.log('Submitting claim...');
-    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/triage/evaluate`,{
-      method:"POST",
-      credentials:"include",
-      body:JSON.stringify({claim_id: claimId1}),
-      headers:{
-        "Content-Type": "application/json"
-      }
-    })
-    const data = await res.json()
-    setCurrentChat([...currentChat, data.message])
-    setcurrentChatToGpt([...currentChatToGpt, data.message])
-
+    setChatLoading(true)
+    try {
+      console.log('Submitting claim...');
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/triage/evaluate`, {
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({ claim_id: claimId1 }),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+      const data = await res.json()
+      setCurrentChat([...currentChat, data.message])
+      setcurrentChatToGpt([...currentChatToGpt, data.message])
+    } catch (error) {
+      setChatLoading(false)
+    }
+    setChatLoading(false)
   };
 
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-100 relative">
+    <div className="flex h-screen bg-[#1c1c1c] text-gray-100 relative">
       {/* Mobile menu button */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -233,37 +270,28 @@ const Chat: React.FC = () => {
 
       {/* Sidebar */}
       <div className={`
-        fixed lg:relative w-[280px] lg:w-[200px] bg-gray-900 border-r border-gray-800 
+        fixed lg:relative w-[280px] lg:w-[200px] bg-[1c1c1c] border-r border-gray-800 
         flex flex-col h-full z-40 transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
 
         {/* Bottom menu */}
-        <div className="border-t border-gray-800 p-2 space-y-1">
-          <button className="flex items-center w-full p-2 text-sm rounded hover:bg-gray-800 transition-colors">
-            <Users size={16} className="mr-2 text-gray-400" />
-            <span>Clear conversations</span>
-          </button>
-          <button className="flex items-center w-full p-2 text-sm rounded hover:bg-gray-800 transition-colors">
-            <Settings size={16} className="mr-2 text-gray-400" />
-            <span>My account</span>
-          </button>
-          <button className="flex items-center w-full p-2 text-sm rounded hover:bg-gray-800 transition-colors">
-            <HelpCircle size={16} className="mr-2 text-gray-400" />
-            <span>Updates & FAQ</span>
-          </button>
-          <button className="flex items-center w-full p-2 text-sm rounded hover:bg-gray-800 transition-colors">
-            <LogOut size={16} className="mr-2 text-gray-400" />
-            <span>Log out</span>
-          </button>
+        <div className=' mt-16'>
+          {allClaims.map((item) => (
+            <div className="border-t border-gray-800 p-2 space-y-1">
+              <button className=" cursor-pointer flex items-center w-full p-2 text-sm rounded hover:bg-gray-800 transition-colors" onClick={() => setclaimId1(item)}>
+                <IdCard size={16} className="mr-2 text-gray-400" />
+                <span>claim {item.substring(0, 5)}</span>
+              </button>
+            </div>
+          ))}
         </div>
       </div>
-
       {/* Main chat area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="h-16 border-b border-gray-800 flex items-center justify-center">
-          <h1 className="text-xl font-bold tracking-wider">PROT<span className="text-indigo-500">E</span>GA</h1>
+          <img src="./logo.png" alt="" />
         </div>
 
 
@@ -287,26 +315,61 @@ const Chat: React.FC = () => {
           </div>
           {currentChat.map((msg, index) => (
             <div key={index} className={`chat ${msg.role === 'user' ? 'chat-end' : 'chat-start'} ${msg.role === 'system' && "hidden"}`}>
-              <div className={`chat-bubble  ${msg.role === 'user' ? 'bg-cyan-400 text-gray-900' : 'bg-gray-700'}`}>
+              <div className="chat-image avatar">
+                <div className="w-10 rounded-full">
+                  {
+                    msg.role === 'user' ? <>
+                      <div className='h-full w-full flex items-center justify-center'> U </div>
+                    </> : <>
+                      <img
+                        alt="Tailwind CSS chat bubble component"
+                        src="/anaya.jpg"
+                      />
+                    </>
+                  }
+
+                </div>
+              </div>
+              {
+                msg.role === 'user' ? <>
+                  <div className="chat-header mr-3">
+                    user
+                  </div>
+                </> : <>
+                  <div className="chat-header ml-2">
+                    Anaya
+                  </div>
+                </>
+              }
+
+              <div className={`chat-bubble  p-2 rounded-2xl  ${msg.role === 'user' ? 'bg-[#373737] text-white' : 'bg-[#373737]'}`}>
                 {
                   msg && <>{msg.content.length > 1 ? <><img src={msg.content[1].image_url.url} className='rounded' height={200} width={200} alt="" /></> : msg.content[0].text}</>
                 }
-
               </div>
+              <div className="chat-footer opacity-50"><CheckCheck size={15} /></div>
             </div>
           ))}
+          {ChatLoading &&
+            <div className={`chat chat-start`}>
+              <div className={`chat-bubble  bg-cyan-400 text-gray-900 `}>
+                <Loader className='animate-spin' size={15} />
+              </div>
+            </div>
+          }
           <div ref={messagesEndRef} />
         </div>
-
+        {showSubmitClaim && <>
+          <div className="px-4 py-2 border-t border-gray-800">
+            <button
+              onClick={handleSubmitClaim}
+              className="btn btn-success w-full"
+            >
+              Submit Claim
+            </button>
+          </div></>}
         {/* Submit claim button */}
-        <div className="px-4 py-2 border-t border-gray-800">
-          <button
-            onClick={handleSubmitClaim}
-            className="btn btn-success w-full"
-          >
-            Submit Claim
-          </button>
-        </div>
+
 
         {/* Message input */}
         <div className="border-t border-gray-800 p-4">
